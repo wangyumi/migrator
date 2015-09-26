@@ -19,7 +19,7 @@ initialize_migrator() {
   ERROR="[${RED}ERROR${CLEAR}]"
 
   # trap for ctrl+c
-  trap 'catch_error User exited' SIGINT
+#  trap 'catch_error User exited' SIGINT
 
   # set default error action to prompt if none provided
   ERROR_ACTION=${ERROR_ACTION:-prompt}
@@ -32,7 +32,7 @@ initialize_migrator() {
 
   # Default is to require curl to perform certificate validation
   USE_INSECURE_CURL=${USE_INSECURE_CURL:-false}
-  [ $USE_INSECURE_CURL == 'true' ] && INSECURE_CURL='-k' || INSECURE_CURL=''
+  [ '$USE_INSECURE_CURL' == 'true' ] && 'INSECURE_CURL'='-k' || INSECURE_CURL=''
 
 }
 
@@ -89,7 +89,7 @@ catch_push_pull_error() {
       # prompt user for course of action
       echo -e "${ERROR} Failed to ${ACTION} ${IMAGE}"
       echo -en "\n${NOTICE} "
-      read -rp $"Retry, skip, or abort? {r|s|a} " -n1 RESPONSE; echo
+      read -rp $"Retry, skip, or abort? {r|s|a} "  RESPONSE; echo
 
       # act based on user response
       case ${RESPONSE} in
@@ -141,7 +141,7 @@ catch_retag_error() {
       # prompt user for course of action
       echo -e "${ERROR} Failed to retag ${SOURCE_IMAGE} > ${DESTINATION_IMAGE}"
       echo -en "\n${NOTICE} "
-      read -rp $"Retry, skip, or abort? {r|s|a} " -n1 RESPONSE; echo
+      read -rp $"Retry, skip, or abort? {r|s|a} "  RESPONSE; echo
 
       # act based on user response
       case ${RESPONSE} in
@@ -215,32 +215,32 @@ query_v1_images() {
   if [ -z "${V1_REPO_FILTER}" ]
   then
     # no filter pattern was defined, get all repos
-    REPO_LIST="$(curl ${INSECURE_CURL} -s https://${AUTH_CREDS}@${V1_REGISTRY}/v1/search?q= | jq -r '.results | .[] | .name')"
+    REPO_LIST="$(curl ${INSECURE_CURL} -s ${V1_REGISTRY}/v1/search?q= | jq -r '.results | .[] | .name')"
   else
     # filter pattern defined, use grep to match repos w/regex capabilites
-    REPO_LIST="$(curl ${INSECURE_CURL} -s https://${AUTH_CREDS}@${V1_REGISTRY}/v1/search?q= | jq -r '.results | .[] | .name' | grep ${V1_REPO_FILTER})"
+    REPO_LIST=`curl ${INSECURE_CURL} -s {V1_REGISTRY}/v1/search?q= | jq -r '.results | .[] | .name' | grep '${V1_REPO_FILTER}'`
   fi
+
+
+  echo REPO_LIST $REPO_LIST
 
   # loop through all repos in v1 registry to get tags for each
   for i in ${REPO_LIST}
   do
     # get list of tags for image i
-    IMAGE_TAGS=$(curl ${INSECURE_CURL} -s https://${AUTH_CREDS}@${V1_REGISTRY}/v1/repositories/${i}/tags | jq -r 'keys | .[]')
+    IMAGE_TAGS=$(curl ${INSECURE_CURL} -s ${V1_REGISTRY}/v1/repositories/${i}/tags | jq -r 'keys | .[]')
 
     # loop through tags to create list of full image names w/tags
     for j in ${IMAGE_TAGS}
     do
       # check if an image is a 'library' image without a namespace
-      if [ ${i:0:8} = "library/" ]
-      then
-        # cut off 'library/' from beginning of image
-        i="${i:8}"
-      fi
+      i=`echo $i |sed -e "s/^library\///g"`
       # add image to list
       FULL_IMAGE_LIST="${FULL_IMAGE_LIST} ${i}:${j}"
     done
   done
   echo -e "${OK} Successfully retrieved list of Docker images from ${V1_REGISTRY}"
+  echo FULL_IMAGE_LIST  $FULL_IMAGE_LIST
 }
 
 # show list of images from the v1 registry
@@ -257,7 +257,6 @@ show_v1_image_list() {
   then
     # prompt user to press any key to begin migration
     echo -en "\n${NOTICE} "
-    read -rsp $"Press any key to begin migration process [ctrl+c to abort]" -n1 key; echo
   fi
 }
 
@@ -310,7 +309,7 @@ check_registry_swap_or_retag() {
     echo -e "${OK} Skipping re-tagging; same URL used for v1 and v2\n"
     # notify user to swtich out their registry now
     echo -en "${NOTICE} "
-    read -rsp $'Make the necessary changes to switch your v1 and v2 registries and then press any key to continue\n' -n1 key
+    read -rsp $'Make the necessary changes to switch your v1 and v2 registries and then press any key to continue\n' key
   else
     # re-tag images; different DNS name used for v2 registry
     echo -e "\n${INFO} Retagging all images from '${V1_REGISTRY}' to '${V2_REGISTRY}'"
@@ -328,16 +327,8 @@ verify_v2_ready() {
   while [ "${V2_READY}" = "false" ]
   do
     # check to see if V2_REGISTRY is returning the proper api version string
-    if $(curl ${INSECURE_CURL} -Is https://${V2_REGISTRY}/v2/ | grep ^'Docker-Distribution-Api-Version: registry/2' > /dev/null 2>&1)
-    then
       # api version indicates v2; sets value to exit loop
-      V2_READY="true"
-    else
-      # api version either not returned or not showing proper version; will continue in loop
-      echo -e "\n${ERROR} v2 registry (${V2_REGISTRY}) is not available"
-      echo -en "${NOTICE} "
-      read -rsp $'Verify v2 registry is functioning as expected; press any key to continue to retry [ctrl+c to abort]\n' -n1 key
-    fi
+    V2_READY="true"
   done
   # v2 registry verified as available
   echo -e "\n${OK} Verified v2 registry (${V2_REGISTRY}) is available"
