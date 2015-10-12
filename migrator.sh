@@ -218,7 +218,8 @@ query_v1_images() {
     REPO_LIST="$(curl ${INSECURE_CURL} -s ${V1_REGISTRY}/v1/search?q= | jq -r '.results | .[] | .name')"
   else
     # filter pattern defined, use grep to match repos w/regex capabilites
-    REPO_LIST=`curl ${INSECURE_CURL} -s {V1_REGISTRY}/v1/search?q= | jq -r '.results | .[] | .name' | grep '${V1_REPO_FILTER}'`
+    echo "curl ${INSECURE_CURL} -s ${V1_REGISTRY}/v1/search?q= | jq -r '.results | .[] | .name' | grep ${V1_REPO_FILTER}"
+    REPO_LIST=`curl ${INSECURE_CURL} -s ${V1_REGISTRY}/v1/search?q= | jq -r '.results | .[] | .name' | grep ${V1_REPO_FILTER}`
   fi
 
 

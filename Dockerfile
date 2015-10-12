@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM reg.docker.alibaba-inc.com/debian:jessie
 
 RUN (apt-get update &&\
   apt-get install -y curl wget jq)
